@@ -1,0 +1,24 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="dev.fusion.widget" android:versionCode="8" android:versionName="0.0.1">
+ <uses-sdk android:minSdkVersion="31" android:targetSdkVersion="35" />
+ <uses-permission android:name="com.miui.circulate.device.PERSIST" />
+ <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+ <queries><package android:name="com.milink.service" /><package android:name="com.miui.personalassistant" /></queries>
+ <application android:label="融合设备卡片" android:icon="@drawable/ic_app" android:theme="@style/AppTheme" android:allowBackup="false" android:supportsRtl="true">
+  <meta-data android:name="miuiWidgetVersion" android:value="2" />
+  <activity android:name=".MainActivity" android:exported="true">
+   <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
+  </activity>
+  <activity android:name=".DeviceActivity" android:exported="false" android:excludeFromRecents="true" android:theme="@style/PanelTheme" />
+  <receiver android:process=":widgetProvider" android:name=".FusionWidget" android:exported="true" android:label="融合设备中心">
+   <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /><action android:name="miui.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+   <meta-data android:name="android.appwidget.provider" android:resource="@xml/fusion_widget" />
+   <meta-data android:name="miuiWidget" android:value="true" />
+   <meta-data android:name="miuiWidgetRefresh" android:value="exposure" />
+   <meta-data android:name="miuiWidgetRefreshMinInterval" android:value="15000" />
+  </receiver>
+  <receiver android:name=".BootReceiver" android:exported="true">
+   <intent-filter><action android:name="android.intent.action.BOOT_COMPLETED" /><action android:name="android.intent.action.MY_PACKAGE_REPLACED" /></intent-filter>
+  </receiver>
+  <service android:name=".RefreshJob" android:permission="android.permission.BIND_JOB_SERVICE" android:exported="true" />
+ </application>
+</manifest>

@@ -1,0 +1,20 @@
+package dev.fusion.widget;
+
+import android.content.Context;
+import android.net.Uri;
+import android.os.Bundle;
+
+public final class BridgeClient {
+    public static Bundle call(Context c, String method, String argument) throws Exception {
+        Bundle b;
+        try { b = c.getContentResolver().call(Uri.parse(Protocol.URI + "/method"), method, argument, null); }
+        catch (SecurityException e) { throw new Exception("模块未连接：请在 LSPosed 启用并勾选「互联互通服务」，然后重启手机"); }
+        catch (RuntimeException e) { throw new Exception("无法连接 MiLink，请确认系统组件正常运行"); }
+        if (b == null || !b.containsKey("ok")) throw new Exception("模块未加载：请启用 LSPosed 模块并重启手机");
+        if (!b.getBoolean("ok")) throw new Exception(b.getString("error", "系统接口暂不可用"));
+        if (Protocol.STATUS.equals(method) && !b.getBoolean("compatible"))
+            throw new Exception("当前 MiLink " + b.getString("milink", "未知版本") + " 尚未适配");
+        return b;
+    }
+    private BridgeClient() {}
+}

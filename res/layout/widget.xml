@@ -1,0 +1,10 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/widget_root" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:padding="12dp" android:background="@drawable/widget_bg">
+ <LinearLayout android:layout_width="match_parent" android:layout_height="28dp" android:gravity="center_vertical">
+  <TextView android:id="@+id/header" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:gravity="center_vertical" android:text="融合设备中心" android:textSize="15sp" android:textStyle="bold" android:textColor="@color/text" />
+  <TextView android:id="@+id/refresh" android:layout_width="48dp" android:layout_height="match_parent" android:gravity="center" android:text="刷新" android:textSize="12sp" android:textColor="@color/accent" android:contentDescription="刷新设备" />
+  <TextView android:id="@+id/more" android:layout_width="44dp" android:layout_height="match_parent" android:gravity="center" android:text="更多" android:textSize="12sp" android:textColor="@color/accent" />
+ </LinearLayout>
+ <TextView android:id="@+id/message" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:gravity="center" android:text="打开融合设备卡片，检查模块连接" android:textSize="12sp" android:textColor="@color/secondary" />
+ <LinearLayout android:id="@+id/rows" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="vertical" android:visibility="gone" />
+ <TextView android:id="@+id/footer" android:layout_width="match_parent" android:layout_height="18dp" android:gravity="center_vertical" android:text="点击设备打开系统面板" android:textSize="10sp" android:singleLine="true" android:textColor="@color/secondary" />
+</LinearLayout>

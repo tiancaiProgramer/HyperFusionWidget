@@ -1,0 +1,7 @@
+<resources>
+ <string name="widget_description">在负一屏或桌面查看融合设备，点击打开系统设备面板。</string>
+ <string-array name="xposed_scope"><item>com.milink.service</item></string-array>
+ <color name="surface">#F6F8FC</color><color name="tile">#FFFFFF</color><color name="text">#172339</color><color name="secondary">#6B778B</color><color name="accent">#3867D6</color>
+ <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar"><item name="android:fontFamily">sans</item><item name="android:colorAccent">@color/accent</item><item name="android:windowLightStatusBar">true</item><item name="android:statusBarColor">@color/surface</item><item name="android:navigationBarColor">@color/surface</item><item name="android:windowBackground">@color/surface</item></style>
+ <style name="PanelTheme" parent="AppTheme"><item name="android:windowIsTranslucent">true</item><item name="android:windowBackground">@android:color/transparent</item><item name="android:backgroundDimEnabled">false</item><item name="android:windowDisablePreview">true</item></style>
+</resources>

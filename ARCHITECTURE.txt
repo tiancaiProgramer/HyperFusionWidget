@@ -1,0 +1,34 @@
+HyperFusionWidget 0.0.1 — 实现结构
+MiLinkHook：现代 libxposed API 102。只在 com.milink.service:ui 与智能助理主进程加载对应适配。
+MiLinkBridge：精确校验调用者和 MiLink 版本；清除 Binder 身份后在 MiLink 内查询原 Provider，返回筛选 JSON。原有 Provider 方法继续原路径。
+NativePanel：MiLink 主线程绑定 MLCardViewHostService，传入其自身解析的 Parcelable，追踪显示、关闭与超时并解除绑定。
+NegativeOneHook：仅当前智能助理版本，处理来自 App 的添加请求；验证不可变 PendingIntent 的创建者 UID、唯一包绑定与签名证书。只在认证请求期间使用原生 PickerHomeActivity 的后台添加流程，不向系统选择器添加按钮；保留原生计数、绑定与布局流程及重复检查。凭据由创建它的 App 返回前台后撤销。
+BridgeClient：通过 ContentResolver.call 调用专用前缀，明确报告未连接状态。
+FusionWidget：独立 :widgetProvider 进程，RemoteViews 与 PendingIntent；手动/曝光刷新；异步广播持有 PendingResult 到请求完成。
+MainActivity / DeviceActivity / RefreshJob：普通应用进程，可响应用户点击打开界面，避免 HyperOS 拒绝 widgetProvider 进程启动 Activity。
+DeviceStore：SQLite 单行缓存，跨进程读取最新数据，每次列表、时间、错误更新保持原子；首次从旧 SharedPreferences 迁移。
+RefreshJob：内容变化任务和周期回退，无常驻前台服务或持续扫描。
+CallerPolicy + PolicyTest：精确 UID、唯一包与构建签名匹配；拒绝系统 UID、Root UID、其他用户和重新签名的 APK。
+
+原生协议基线
+MiLink 17.2.0.1.2601081906；智能助理 25.31.06-07091932。
+Parser: com.miui.circulate.device.api.b.b(Cursor)，从当前 /export 内解析匹配设备。
+Host: com.miui.circulate.world.MLCardViewHostService。
+Message what=1；keyCardFrameVersion=20250417L，deviceInfo，keyDeviceToSpecifyPanel=""，replyTo。
+回调 5=created，6=shown，4=hidden，9=error。
+创建超时12秒，已显示面板会话上限10分钟；已有活动会话时拒绝新请求。
+场景类型 mijia_iot_control 与锁屏请求不调用。
+负一屏 messengerTo=1；通过原生 AppWidgetHost 分配和绑定，使用原生 4x2 尺寸转换。
+
+实机发现与修复
+旧版本将整个应用置于 :widgetProvider，触发 HyperOS “Reject widget call”并阻止添加入口。
+目前仅 Receiver 使用该进程，其余组件在正常进程运行；SQLite 解决跨进程 SharedPreferences 缓存失效。
+反编译显示的 f10241t 是 JADX 别名，运行时字段为 t；已按运行时字段名修复。
+强制停止智能助理后，需先进入桌面加载负一屏宿主；否则原生 messenger queue 尚未建立。
+
+验证边界
+构建和11项 JVM 检查通过；安装、两个作用域加载、真实设备读取、原生负一屏绑定和实际显示已验证。
+验证范围记录在 docs/VALIDATION.md 中。
+未实现面板 Surface 内嵌，未保证全部设备状态持续实时，未完成长期后台和折叠屏布局测试。
+
+“更多”入口：FusionWidget.activity(more) 直接创建系统中心 PendingIntent，不经过 MainActivity 的中转路径。
