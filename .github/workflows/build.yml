@@ -16,12 +16,16 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Install Android build tools
-        run: sdkmanager 'platforms;android-35' 'build-tools;36.0.0'
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
+        with:
+          cmdline-tools-version: '12266719'
+          packages: 'platform-tools platforms;android-35 build-tools;36.0.0'
+          log-accepted-android-sdk-licenses: false
       - name: Fetch pinned compile-only API
         run: python3 tools/fetch_xposed_api.py
       - name: Build and verify
-        run: FUSION_ANDROID_SDK="$ANDROID_HOME" FUSION_JAVA_HOME="$JAVA_HOME" python3 build.py
+        run: FUSION_ANDROID_SDK="${ANDROID_SDK_ROOT:-$ANDROID_HOME}" FUSION_JAVA_HOME="$JAVA_HOME" python3 build.py
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: HyperFusionWidget-ci-${{ github.sha }}
