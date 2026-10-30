@@ -38,8 +38,9 @@ run(TOOLS/'aapt2', 'link', '-I', ANDROID, '--manifest', P/'AndroidManifest.xml',
 sources = sorted((P/'src').rglob('*.java')) + sorted((BUILD/'generated').rglob('*.java'))
 run(JDK/'bin/javac', '-encoding', 'UTF-8', '-source', '8', '-target', '8', '-Xlint:-options', '-classpath', str(ANDROID)+os.pathsep+str(API), '-d', BUILD/'classes', *sources)
 # Test real caller-certificate pinning and state interpretation on the host JVM.
-run(JDK/'bin/javac', '-encoding', 'UTF-8', '-classpath', BUILD/'classes', '-d', BUILD/'test-classes', P/'tests/PolicyTest.java')
+run(JDK/'bin/javac', '-encoding', 'UTF-8', '-classpath', BUILD/'classes', '-d', BUILD/'test-classes', P/'tests/PolicyTest.java', P/'tests/PresentationTest.java')
 run(JDK/'bin/java', '-cp', str(BUILD/'classes')+os.pathsep+str(BUILD/'test-classes'), 'dev.fusion.widget.PolicyTest', BUILD/'certificate.der')
+run(JDK/'bin/java', '-cp', str(BUILD/'classes')+os.pathsep+str(BUILD/'test-classes'), 'dev.fusion.widget.PresentationTest')
 run(JDK/'bin/jar', 'cf', BUILD/'app-classes.jar', '-C', BUILD/'classes', '.')
 run(TOOLS/'d8', '--min-api', '31', '--lib', ANDROID, '--classpath', API, '--output', BUILD/'dex', BUILD/'app-classes.jar')
 with zipfile.ZipFile(BUILD/'unsigned.apk', 'a', compression=zipfile.ZIP_DEFLATED) as apk:

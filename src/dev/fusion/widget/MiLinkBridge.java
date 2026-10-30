@@ -84,7 +84,7 @@ public final class MiLinkBridge {
         JSONArray list = new JSONArray();
         try (Cursor c = query(p, Uri.parse(Protocol.URI + "/export"))) {
             if (c == null) return fail("系统设备列表暂不可用");
-            while (c.moveToNext() && list.length() < 12) {
+            while (c.moveToNext() && list.length() < 128) {
                 JSONObject item = new JSONObject();
                 for (String key : new String[]{"id", "category", "deviceType", "title", "subtitle", "state", "battery", "icon", "updateTime"})
                     item.put(key, str(c, key));

@@ -7,6 +7,9 @@ import org.json.JSONObject;
 
 final class DeviceIcons {
     static Bitmap make(Context ctx, JSONObject device) {
+        return make(ctx, device, Color.rgb(74, 119, 205));
+    }
+    static Bitmap make(Context ctx, JSONObject device, int fallbackColor) {
         Bitmap b = Bitmap.createBitmap(80, 80, Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(b);
         try {
@@ -17,9 +20,11 @@ final class DeviceIcons {
                 d.setBounds(4, 4, 76, 76); d.draw(c); return b;
             }
         } catch (Exception ignored) {}
-        Paint p = new Paint(3); p.setColor(Color.rgb(74, 119, 205)); p.setStrokeWidth(4); p.setStyle(Paint.Style.STROKE);
+        Paint p = new Paint(3); p.setColor(fallbackColor); p.setStrokeWidth(4); p.setStyle(Paint.Style.STROKE);
         String t = device.optString("deviceType").toLowerCase(java.util.Locale.ROOT);
-        if (t.contains("phone") || t.contains("pad")) {
+        if ("fusion_hidden".equals(t)) {
+            Path folder = new Path(); folder.moveTo(10, 25); folder.lineTo(10, 66); folder.lineTo(70, 66); folder.lineTo(70, 25); folder.lineTo(37, 25); folder.lineTo(30, 15); folder.lineTo(10, 15); folder.close(); c.drawPath(folder, p); c.drawLine(30, 43, 50, 43, p);
+        } else if (t.contains("phone") || t.contains("pad")) {
             c.drawRoundRect(t.contains("pad") ? 13 : 22, 9, t.contains("pad") ? 67 : 58, 71, 7, 7, p); c.drawLine(35, 62, 45, 62, p);
         } else if (t.contains("windows") || t.contains("tv")) {
             c.drawRoundRect(7, 13, 73, 56, 5, 5, p); c.drawLine(40, 56, 40, 67, p); c.drawLine(25, 68, 55, 68, p);

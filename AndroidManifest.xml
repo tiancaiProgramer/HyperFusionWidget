@@ -1,11 +1,11 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="dev.fusion.widget" android:versionCode="8" android:versionName="0.0.1">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="dev.fusion.widget" android:versionCode="10" android:versionName="0.0.3">
  <uses-sdk android:minSdkVersion="31" android:targetSdkVersion="35" />
  <uses-permission android:name="com.miui.circulate.device.PERSIST" />
  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
  <queries><package android:name="com.milink.service" /><package android:name="com.miui.personalassistant" /></queries>
  <application android:label="融合设备卡片" android:icon="@drawable/ic_app" android:theme="@style/AppTheme" android:allowBackup="false" android:supportsRtl="true">
   <meta-data android:name="miuiWidgetVersion" android:value="2" />
-  <activity android:name=".MainActivity" android:exported="true">
+  <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTop">
    <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
   </activity>
   <activity android:name=".DeviceActivity" android:exported="false" android:excludeFromRecents="true" android:theme="@style/PanelTheme" />

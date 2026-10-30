@@ -1,4 +1,4 @@
-HyperFusionWidget 0.0.1 — 实现结构
+HyperFusionWidget 0.0.3 — 实现结构
 MiLinkHook：现代 libxposed API 102。只在 com.milink.service:ui 与智能助理主进程加载对应适配。
 MiLinkBridge：精确校验调用者和 MiLink 版本；清除 Binder 身份后在 MiLink 内查询原 Provider，返回筛选 JSON。原有 Provider 方法继续原路径。
 NativePanel：MiLink 主线程绑定 MLCardViewHostService，传入其自身解析的 Parcelable，追踪显示、关闭与超时并解除绑定。
@@ -6,7 +6,9 @@ NegativeOneHook：仅当前智能助理版本，处理来自 App 的添加请求
 BridgeClient：通过 ContentResolver.call 调用专用前缀，明确报告未连接状态。
 FusionWidget：独立 :widgetProvider 进程，RemoteViews 与 PendingIntent；手动/曝光刷新；异步广播持有 PendingResult 到请求完成。
 MainActivity / DeviceActivity / RefreshJob：普通应用进程，可响应用户点击打开界面，避免 HyperOS 拒绝 widgetProvider 进程启动 Activity。
-DeviceStore：SQLite 单行缓存，跨进程读取最新数据，每次列表、时间、错误更新保持原子；首次从旧 SharedPreferences 迁移。
+DeviceStore：SQLite 单行缓存，跨进程读取最新数据，每次列表、时间、错误更新保持原子；首次从旧 SharedPreferences 迁移。数据库版本 2 增加 presentation 设置表，保留旧设备缓存。
+AppUi / MainActivity：原生两列卡片、统一圆角操作行、折叠操作与说明、展示设置；前台每15秒同步系统列表，暂停时停止轮询。
+DisplayPreferences / DevicePresentation：layout_v3 单条 JSON 保存首页有序常驻列表、独立隐藏集合、全部设备顺序和隐藏设备顺序。新设备追加至完整列表，不改变首页选择；隐藏会取消该设备常驻，恢复不会自动重新常驻。隐藏栏目是可常驻和排序的独立模块。旧版展示数量只用于一次性迁移旧首页外观。
 RefreshJob：内容变化任务和周期回退，无常驻前台服务或持续扫描。
 CallerPolicy + PolicyTest：精确 UID、唯一包与构建签名匹配；拒绝系统 UID、Root UID、其他用户和重新签名的 APK。
 
@@ -27,8 +29,9 @@ Message what=1；keyCardFrameVersion=20250417L，deviceInfo，keyDeviceToSpecify
 强制停止智能助理后，需先进入桌面加载负一屏宿主；否则原生 messenger queue 尚未建立。
 
 验证边界
-构建和11项 JVM 检查通过；安装、两个作用域加载、真实设备读取、原生负一屏绑定和实际显示已验证。
+构建、11项身份/状态与17项展示行为 JVM 检查通过；安装、两个作用域加载、真实设备读取、原生负一屏绑定和实际显示在前版已验证。0.0.3 当前实机情况另见验证记录。
 验证范围记录在 docs/VALIDATION.md 中。
 未实现面板 Surface 内嵌，未保证全部设备状态持续实时，未完成长期后台和折叠屏布局测试。
 
-“更多”入口：FusionWidget.activity(more) 直接创建系统中心 PendingIntent，不经过 MainActivity 的中转路径。
+“更多”入口：App 内切换至完整设备列表；FusionWidget.activity(more) 用 expand Intent 打开相同列表，hidden Intent 同时展开隐藏栏目。系统设备中心仅由明确的辅助入口打开。
+本轮保持 MiLink 查询不变；已知 /export 的 max_count 默认7台，列表漏项尚未修复。
