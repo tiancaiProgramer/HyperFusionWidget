@@ -60,6 +60,14 @@ public final class FusionWidget extends AppWidgetProvider {
         });
         return true;
     }
+    static void recheck(Context context, Runnable done) {
+        Context app = context.getApplicationContext();
+        WORK.execute(() -> {
+            try { fetch(app); }
+            catch (Exception e) { DeviceStore.error(app, e.getMessage()); }
+            finally { updateAll(app); done.run(); }
+        });
+    }
     static void fetch(Context context) throws Exception {
         BridgeClient.call(context, Protocol.STATUS, null);
         Bundle data = BridgeClient.call(context, Protocol.SNAPSHOT, null);

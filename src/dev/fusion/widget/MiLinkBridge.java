@@ -22,12 +22,16 @@ public final class MiLinkBridge {
         Context ctx = provider.getContext();
         if (ctx == null || !trusted(ctx)) return fail("调用身份验证失败");
         String installed = ctx.getPackageManager().getPackageInfo(Protocol.TARGET, 0).versionName;
+        boolean compatibility = extras != null && extras.getBoolean(Protocol.COMPATIBILITY_MODE, false);
+        boolean allowed = MiLinkVersionPolicy.allows(installed, compatibility);
         Bundle result = ok(); result.putString("milink", installed); result.putInt("bridge", 1);
         if (Protocol.STATUS.equals(method)) {
-            result.putBoolean("compatible", Protocol.BASELINE.equals(installed));
+            result.putBoolean("compatible", allowed);
+            result.putBoolean("baseline", MiLinkVersionPolicy.isBaseline(installed));
+            result.putBoolean("compatibility_mode", compatibility);
             return result;
         }
-        if (!Protocol.BASELINE.equals(installed)) return fail("MiLink 版本尚未适配，请勿强制启用");
+        if (!allowed) return fail("MiLink 版本尚未适配，请在「关于」中开启 MiLink 兼容模式后重试");
         final int caller = Binder.getCallingUid();
         long identity = Binder.clearCallingIdentity();
         try {
@@ -84,7 +88,15 @@ public final class MiLinkBridge {
         // Snapshot and native-panel lookup must query the same bounded sources.
         Uri uri = Uri.parse(Protocol.URI + (source == 0 ? "/export" : "/category/mijia")).buildUpon()
                 .appendQueryParameter(source == 0 ? "max_count" : "limit", Integer.toString(MAX_DEVICES)).build();
-        return p.query(uri, null, null, null, null);
+        Cursor cursor = p.query(uri, null, null, null, null);
+        if (cursor != null) {
+            for (String column : source == 0 ? new String[]{"id", "title", "deviceType"} : new String[]{"id", "title", "deviceType", "category"}) {
+                if (cursor.getColumnIndex(column) < 0) {
+                    cursor.close(); throw new IllegalStateException("MiLink device schema is incompatible");
+                }
+            }
+        }
+        return cursor;
     }
     private static boolean eligible(Cursor c, int source) {
         return source == 0 || ("mijia".equals(str(c, "category")) && "mijia_iot".equals(str(c, "deviceType")));

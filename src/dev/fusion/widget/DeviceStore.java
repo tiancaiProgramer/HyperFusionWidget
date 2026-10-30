@@ -30,6 +30,8 @@ public final class DeviceStore {
     }
     public static long time(Context c) { return Long.parseLong(value(c, "time", "0")); }
     public static String error(Context c) { return value(c, "error", ""); }
+    static boolean compatibilityMode(Context c) { return "1".equals(preference(c, Protocol.COMPATIBILITY_MODE, "1")); }
+    static void compatibilityMode(Context c, boolean enabled) { putPreference(c, Protocol.COMPATIBILITY_MODE, enabled ? "1" : "0"); }
     public static void error(Context c, String message) {
         ContentValues row = new ContentValues(); row.put("error", message == null ? "设备列表更新失败" : message); db(c).update("snapshot", row, "id=1", null);
     }

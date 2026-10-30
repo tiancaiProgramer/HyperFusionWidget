@@ -1,20 +1,22 @@
-HyperFusionWidget 0.0.4 — 实现结构
+HyperFusionWidget 0.0.5 — 实现结构
 MiLinkHook：现代 libxposed API 102。只在 com.milink.service:ui 与智能助理主进程加载对应适配。
-MiLinkBridge：精确校验调用者和 MiLink 版本；清除 Binder 身份后在 MiLink 内查询原 Provider，返回筛选 JSON。原有 Provider 方法继续原路径。
+MiLinkBridge：先精确校验调用者，再按 MiLinkVersionPolicy 检查版本；标准模式仅接受基线，兼容模式允许其他非空版本尝试接口。清除 Binder 身份后在 MiLink 内查询原 Provider，返回筛选 JSON。目录缺少必要字段时拒绝该次读取，原有 Provider 方法继续原路径。
 NativePanel：MiLink 主线程绑定 MLCardViewHostService，传入其自身解析的 Parcelable，追踪显示、关闭与超时并解除绑定。
 NegativeOneHook：仅当前智能助理版本，处理来自 App 的添加请求；验证不可变 PendingIntent 的创建者 UID、唯一包绑定与签名证书。只在认证请求期间使用原生 PickerHomeActivity 的后台添加流程，不向系统选择器添加按钮；保留原生计数、绑定与布局流程及重复检查。凭据由创建它的 App 返回前台后撤销。
-BridgeClient：通过 ContentResolver.call 调用专用前缀，明确报告未连接状态。
+BridgeClient：通过 ContentResolver.call 调用专用前缀；每次请求从 SQLite 读取 milink_compatibility 并放入 Bundle。STATUS 返回模式确认，旧桥接未加载新接口时提示重载；明确报告未连接状态。
 FusionWidget：独立 :widgetProvider 进程，RemoteViews 与 PendingIntent；手动/曝光刷新；异步广播持有 PendingResult 到请求完成。
 MainActivity / DeviceActivity / RefreshJob：普通应用进程，可响应用户点击打开界面，避免 HyperOS 拒绝 widgetProvider 进程启动 Activity。
 DeviceStore：SQLite 单行缓存，跨进程读取最新数据，每次列表、时间、错误更新保持原子；首次从旧 SharedPreferences 迁移。数据库版本 2 增加 presentation 设置表，保留旧设备缓存。
-AppUi / MainActivity：原生两列卡片、统一圆角操作行、折叠操作与说明、展示设置；前台每15秒同步系统列表，暂停时停止轮询。
+AppUi / MainActivity：原生两列卡片、统一圆角操作行、展示设置与「关于」页；「关于」集中显示兼容开关、可折叠启用说明和测试版本，支持状态恢复与返回。前台每15秒同步系统列表，暂停时停止轮询。
+兼容开关：缺少设置时默认1，保存于 presentation 表独立键，不写入 layout_v3；已保存的0仍表示用户手动关闭。切换后通过 FusionWidget 工作队列重新连接，不触发常驻服务；应用与小组件独立进程共用该设置。
 DisplayPreferences / DevicePresentation：layout_v3 单条 JSON 保存首页有序常驻列表、独立隐藏集合、全部设备顺序和隐藏设备顺序。新设备追加至完整列表，不改变首页选择；隐藏会取消该设备常驻，恢复不会自动重新常驻。隐藏栏目是可常驻和排序的独立模块。旧版展示数量只用于一次性迁移旧首页外观。
 RefreshJob：内容变化任务和周期回退，无常驻前台服务或持续扫描。
 CallerPolicy + PolicyTest：精确 UID、唯一包与构建签名匹配；拒绝系统 UID、Root UID、其他用户和重新签名的 APK。
+MiLinkVersionPolicy + CompatibilityTest：11 项基线、旧版本、新版本及缺失版本的版本与开关策略检查；兼容模式不参与调用者认证。
 
 原生协议基线
 MiLink 17.2.0.1.2601081906；智能助理 25.31.06-07091932。
-Parser: com.miui.circulate.device.api.b.b(Cursor)，从当前 /export 内解析匹配设备。
+Parser: com.miui.circulate.device.api.b.b(Cursor)，从当前导出列表或普通米家目录内解析匹配设备。
 Host: com.miui.circulate.world.MLCardViewHostService。
 Message what=1；keyCardFrameVersion=20250417L，deviceInfo，keyDeviceToSpecifyPanel=""，replyTo。
 回调 5=created，6=shown，4=hidden，9=error。

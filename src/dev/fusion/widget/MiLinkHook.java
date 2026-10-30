@@ -33,7 +33,9 @@ public final class MiLinkHook extends XposedModule {
                             (String) chain.getArg(1), (Bundle) chain.getArg(2), loader);
                 } catch (Throwable e) {
                     Bundle b = new Bundle(); b.putBoolean("ok", false);
-                    b.putString("error", "系统接口暂不可用（" + e.getClass().getSimpleName() + "）");
+                    Bundle extras = (Bundle) chain.getArg(2);
+                    boolean compatibility = extras != null && extras.getBoolean(Protocol.COMPATIBILITY_MODE, false);
+                    b.putString("error", (compatibility ? "兼容模式暂无法使用当前 MiLink 接口（" : "系统接口暂不可用（") + e.getClass().getSimpleName() + "）");
                     return b;
                 }
             });

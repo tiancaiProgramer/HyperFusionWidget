@@ -23,7 +23,7 @@ public final class MainActivity extends Activity {
     private DisplayPreferences preferences;
     private LinearLayout content;
     private ScrollView scroll;
-    private boolean settingsPage,allPage,hiddenExpanded,settingsReturnAll,foreground,refreshing,seeded,dragging;
+    private boolean settingsPage,allPage,aboutPage,hiddenExpanded,settingsReturnAll,foreground,refreshing,seeded,dragging,compatibilityChecking;
     private String settingsTab=DevicePresentation.HOME;
     private DevicePresentation model;
     private PendingIntent addProof;
@@ -43,7 +43,7 @@ public final class MainActivity extends Activity {
         ui=new AppUi(this);preferences=new DisplayPreferences(this);
         applyIntent(getIntent());
         if(state!=null) {
-            allPage=state.getBoolean("all",allPage);settingsPage=state.getBoolean("settings");hiddenExpanded=state.getBoolean("hidden");
+            allPage=state.getBoolean("all",allPage);settingsPage=state.getBoolean("settings");aboutPage=state.getBoolean("about",aboutPage);hiddenExpanded=state.getBoolean("hidden");
             settingsReturnAll=state.getBoolean("settingsReturnAll");settingsTab=state.getString("tab",DevicePresentation.HOME);
         }
         getWindow().setDecorFitsSystemWindows(false);
@@ -70,6 +70,7 @@ public final class MainActivity extends Activity {
     }
     private void applyIntent(Intent intent) {
         String action=intent.getAction();
+        aboutPage="about".equals(action);
         allPage="expand".equals(action)||"more".equals(action)||"hidden".equals(action);
         hiddenExpanded="hidden".equals(action);
     }
@@ -77,12 +78,13 @@ public final class MainActivity extends Activity {
         super.onNewIntent(intent);setIntent(intent);settingsPage=false;applyIntent(intent);render();scrollToTop();
     }
     @Override public void onSaveInstanceState(Bundle out) {
-        out.putBoolean("all",allPage);out.putBoolean("settings",settingsPage);out.putBoolean("hidden",hiddenExpanded);
+        out.putBoolean("all",allPage);out.putBoolean("settings",settingsPage);out.putBoolean("about",aboutPage);out.putBoolean("hidden",hiddenExpanded);
         out.putBoolean("settingsReturnAll",settingsReturnAll);out.putString("tab",settingsTab);super.onSaveInstanceState(out);
     }
     @Override public void onBackPressed() { navigateBack(); }
     private void navigateBack() {
-        if(settingsPage)leaveSettings();
+        if(aboutPage) {aboutPage=false;render();scrollToTop();}
+        else if(settingsPage)leaveSettings();
         else if(allPage) {allPage=false;hiddenExpanded=false;render();scrollToTop();}
         else finish();
     }
@@ -90,6 +92,7 @@ public final class MainActivity extends Activity {
         settingsReturnAll=allPage;settingsTab=tab;settingsPage=true;render();scrollToTop();
     }
     private void showAll() {allPage=true;hiddenExpanded=false;newNotice="";render();scrollToTop();}
+    private void openAbout() {aboutPage=true;settingsPage=false;render();scrollToTop();}
 
     void render() {
         if(content==null||isFinishing()||isDestroyed())return;
@@ -103,7 +106,7 @@ public final class MainActivity extends Activity {
         else if(seeded) for(String id:devices.keySet())if(knownIds.add(id)) {newIds.add(id);newNotice=devices.get(id).optString("title","新设备");}
         model=preferences.layout(snapshot);
         content.removeAllViews();
-        if(settingsPage)renderSettings();else if(allPage)renderAll();else renderHome();
+        if(aboutPage)renderAbout();else if(settingsPage)renderSettings();else if(allPage)renderAll();else renderHome();
         main.post(()->{
             if(isDestroyed())return;
             if(focus!=null) { View next=content.findViewWithTag(focus);if(next!=null)next.requestFocus(); }
@@ -145,15 +148,40 @@ public final class MainActivity extends Activity {
             group.addView(option("打开系统设备中心",AppUi.DEVICES,AppUi.OUT,()->{try{openCenter();}catch(Exception e){toast("系统设备中心暂不可用");}}));
             LinearLayout.LayoutParams gp=new LinearLayout.LayoutParams(-1,-2);gp.topMargin=ui.dp(8);content.addView(group,gp);
         }
-        ui.space(content,12);boolean guide=preferences.guideOpen();
+        ui.space(content,12);LinearLayout about=actionRow("关于",AppUi.HELP,AppUi.RIGHT,this::openAbout);about.setTag("about");content.addView(about);
+        if(!feedback.isEmpty()) {ui.space(content,10);content.addView(ui.text(feedback,12,ui.accent,false));}
+        ui.space(content,24);TextView footer=ui.text("HyperFusionWidget · "+BuildIdentity.VERSION_NAME,11,ui.muted,false);footer.setGravity(Gravity.CENTER);content.addView(footer);
+    }
+    private void renderAbout() {
+        content.addView(smallAction("返回首页",AppUi.BACK,()->{aboutPage=false;render();scrollToTop();}));ui.space(content,18);
+        content.addView(ui.text("关于",27,ui.text,true));ui.space(content,10);
+        content.addView(ui.text("融合设备卡片 · "+BuildIdentity.VERSION_NAME,15,ui.muted,false));ui.space(content,24);
+        content.addView(compatibilityCard());ui.space(content,14);
+        boolean guide=preferences.guideOpen();
         LinearLayout guideRow=actionRow("启用与添加",AppUi.HELP,guide?AppUi.UP:AppUi.DOWN,()->{preferences.guideOpen(!preferences.guideOpen());render();});guideRow.setTag("guide");content.addView(guideRow);
         if(guide) {
-            TextView help=ui.text("1. 在 LSPosed 启用「融合设备卡片」，勾选「设备互联 / com.milink.service」与「智能助理 / com.miui.personalassistant」。\n\n2. 重新加载目标应用后，返回这里确认模块连接。\n\n3. 先在桌面打开一次负一屏，再通过「更多操作」添加卡片。已有卡片不会重复添加。\n\n设备状态由系统提供，App 可见时自动同步。负一屏会按卡片高度展示已选择的设备。\n\n已适配 MiLink "+Protocol.BASELINE+"；智能助理 25.31.06-07091932。"+(error.isEmpty()?"":"\n\n当前提示："+error),12,ui.muted,false);
+            TextView help=ui.text("1. 在 LSPosed 启用「融合设备卡片」，勾选「设备互联 / com.milink.service」与「智能助理 / com.miui.personalassistant」。\n\n2. 更新模块后重新加载目标应用，再返回这里确认连接。\n\n3. 先打开一次负一屏，再通过首页「更多操作」添加卡片。已有卡片不会重复添加。\n\n设备状态由系统提供，App 可见时自动同步。负一屏按卡片高度展示已选择的设备。",12,ui.muted,false);
             help.setLineSpacing(ui.dp(4),1);help.setPadding(ui.dp(18),ui.dp(16),ui.dp(18),ui.dp(16));help.setBackground(ui.shape(ui.surface,22));
             LinearLayout.LayoutParams hp=new LinearLayout.LayoutParams(-1,-2);hp.topMargin=ui.dp(8);content.addView(help,hp);
         }
-        if(!feedback.isEmpty()) {ui.space(content,10);content.addView(ui.text(feedback,12,ui.accent,false));}
-        ui.space(content,24);TextView footer=ui.text("HyperFusionWidget · "+BuildIdentity.VERSION_NAME,11,ui.muted,false);footer.setGravity(Gravity.CENTER);content.addView(footer);
+        ui.space(content,18);LinearLayout tested=ui.column();tested.setPadding(ui.dp(18),ui.dp(16),ui.dp(18),ui.dp(16));tested.setBackground(ui.shape(ui.surface,22));
+        tested.addView(ui.text("测试版本说明",16,ui.text,true));ui.space(tested,10);
+        TextView versions=ui.text("MiLink 标准模式：\n"+Protocol.BASELINE+"\n\nMiLink 兼容模式：\n17.2.5.0.2607311944\n\n负一屏自动添加：\n智能助理 25.31.06-07091932\n\n其他版本可尝试兼容模式，部分功能可能不可用。此开关仅作用于 MiLink。",12,ui.muted,false);versions.setLineSpacing(ui.dp(4),1);tested.addView(versions);content.addView(tested);
+    }
+    private View compatibilityCard() {
+        LinearLayout card=ui.column();card.setPadding(ui.dp(18),ui.dp(14),ui.dp(18),ui.dp(16));card.setBackground(ui.shape(ui.surface,22));
+        LinearLayout row=ui.row();row.setMinimumHeight(ui.dp(44));row.addView(ui.text("MiLink 兼容模式",16,ui.text,true),new LinearLayout.LayoutParams(0,-2,1));
+        Switch toggle=new Switch(this);toggle.setContentDescription("MiLink兼容模式");toggle.setTag("milink-compatibility");toggle.setChecked(DeviceStore.compatibilityMode(this));row.addView(toggle);row.setOnClickListener(v->toggle.setChecked(!toggle.isChecked()));card.addView(row);
+        ui.space(card,6);String installed;
+        try { installed=getPackageManager().getPackageInfo(Protocol.TARGET,0).versionName; } catch(Exception e) { installed="未检测到"; }
+        TextView version=ui.text("当前 MiLink："+installed,12,ui.muted,false);card.addView(version);ui.space(card,10);
+        TextView hint=ui.text("默认开启。允许其他 MiLink 版本尝试连接；系统接口不同仍可能无法使用。关闭后恢复标准版本检查。",12,ui.muted,false);hint.setLineSpacing(ui.dp(4),1);card.addView(hint);ui.space(card,10);
+        String error=DeviceStore.error(this);String state=compatibilityChecking?"正在检查 MiLink 连接…":error.isEmpty()?(DeviceStore.time(this)==0?"等待连接":"模块已连接 · 已读取 "+devices.size()+" 台设备"):error;
+        TextView status=ui.text(state,12,error.isEmpty()?ui.accent:ui.muted,false);status.setLineSpacing(ui.dp(4),1);card.addView(status);
+        toggle.setOnCheckedChangeListener((button,enabled)->{
+            DeviceStore.compatibilityMode(this,enabled);compatibilityChecking=true;render();
+            FusionWidget.recheck(this,()->main.post(()->{if(!isDestroyed()){compatibilityChecking=false;render();}}));
+        });return card;
     }
     private View deviceCard(JSONObject device,boolean fresh) {
         LinearLayout card=ui.column();card.setTag("device:"+device.optString("id"));card.setPadding(ui.dp(16),ui.dp(16),ui.dp(16),ui.dp(16));card.setMinimumHeight(ui.dp(128));card.setBackground(ui.ripple(ui.surface,22));card.setClickable(true);card.setFocusable(true);
@@ -316,7 +344,7 @@ public final class MainActivity extends Activity {
     private void leaveSettings() { settingsPage=false;allPage=settingsReturnAll;hiddenExpanded=false;render();scrollToTop(); }
     private void refreshDevices() {
         if(refreshing)return;
-        boolean accepted=FusionWidget.request(this,true,()->main.post(()->{refreshing=false;feedback=DeviceStore.error(this).isEmpty()?"已同步系统设备列表":"同步暂未完成，请查看启用与添加中的提示。";render();}));
+        boolean accepted=FusionWidget.request(this,true,()->main.post(()->{refreshing=false;feedback=DeviceStore.error(this).isEmpty()?"已同步系统设备列表":"同步暂未完成，请在「关于」中查看连接提示。";render();}));
         if(accepted) {refreshing=true;feedback="";render();} else toast("正在同步或刚刚刷新过，请稍后再试");
     }
     private void addNegative() {
