@@ -189,7 +189,8 @@ public final class MainActivity extends Activity {
                 int index=i+column;View card;
                 if(index>=ids.size())card=new View(this);
                 else {String id=ids.get(index);card=DevicePresentation.HIDDEN.equals(id)?hiddenCard():deviceCard(devices.get(id),newIds.contains(id));}
-                LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(0,-2,1);if(column==0)cp.rightMargin=ui.dp(6);else cp.leftMargin=ui.dp(6);row.addView(card,cp);
+                // An empty View with wrap-content height expands under ScrollView's unbounded measurement.
+                LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(0,index>=ids.size()?0:-2,1);if(column==0)cp.rightMargin=ui.dp(6);else cp.leftMargin=ui.dp(6);row.addView(card,cp);
             }
             LinearLayout.LayoutParams rp=new LinearLayout.LayoutParams(-1,-2);if(i>0)rp.topMargin=ui.dp(12);parent.addView(row,rp);
             if(hiddenExpanded&&(DevicePresentation.HIDDEN.equals(ids.get(i))||(i+1<ids.size()&&DevicePresentation.HIDDEN.equals(ids.get(i+1))))) {

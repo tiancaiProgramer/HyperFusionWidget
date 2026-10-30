@@ -11,6 +11,7 @@ import java.util.*;
 
 /** Runs inside MiLink :ui. Only authenticated, versioned, constrained operations. */
 public final class MiLinkBridge {
+    private static final int MAX_DEVICES = 128;
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
     private static final Map<String, NativePanel> PANELS = new HashMap<>();
     private static boolean searching;
@@ -36,13 +37,15 @@ public final class MiLinkBridge {
                 if (locked(ctx)) return fail("请解锁手机后打开设备面板");
                 if (arg == null || arg.isEmpty() || arg.length() > 256) return fail("设备标识无效");
                 Parcelable device = null;
-                try (Cursor c = query(provider, Uri.parse(Protocol.URI + "/export"))) {
-                    while (c != null && c.moveToNext()) {
-                        if (!arg.equals(str(c, "id"))) continue;
-                        // Scenes can execute immediately rather than show a panel. Exclude them.
-                        if ("mijia_iot_control".equals(str(c, "deviceType"))) return fail("此项目是直接执行的场景，请在系统融合设备中心操作");
-                        device = (Parcelable) loader.loadClass("com.miui.circulate.device.api.b").getMethod("b", Cursor.class).invoke(null, c);
-                        break;
+                for (int source = 0; source < 2 && device == null; source++) {
+                    try (Cursor c = queryDevices(provider, source)) {
+                        while (c != null && c.moveToNext()) {
+                            if (!eligible(c, source) || !arg.equals(str(c, "id"))) continue;
+                            // Scenes can execute immediately rather than show a panel. Exclude them.
+                            if ("mijia_iot_control".equals(str(c, "deviceType"))) return fail("此项目是直接执行的场景，请在系统融合设备中心操作");
+                            device = (Parcelable) loader.loadClass("com.miui.circulate.device.api.b").getMethod("b", Cursor.class).invoke(null, c);
+                            break;
+                        }
                     }
                 }
                 if (device == null) return fail("设备已不在当前列表，请先刷新");
@@ -76,21 +79,38 @@ public final class MiLinkBridge {
                     packages != null && packages.length == 1 && Protocol.APP.equals(packages[0]), certs[0].toByteArray());
         } catch (Exception e) { return false; }
     }
-    private static Cursor query(ContentProvider p, Uri uri) { return p.query(uri, null, null, null, null); }
+    private static Cursor queryDevices(ContentProvider p, int source) {
+        // Export is a ranked subset. The category catalogue also contains locks and air conditioners.
+        // Snapshot and native-panel lookup must query the same bounded sources.
+        Uri uri = Uri.parse(Protocol.URI + (source == 0 ? "/export" : "/category/mijia")).buildUpon()
+                .appendQueryParameter(source == 0 ? "max_count" : "limit", Integer.toString(MAX_DEVICES)).build();
+        return p.query(uri, null, null, null, null);
+    }
+    private static boolean eligible(Cursor c, int source) {
+        return source == 0 || ("mijia".equals(str(c, "category")) && "mijia_iot".equals(str(c, "deviceType")));
+    }
     private static String str(Cursor c, String key) {
         int index = c.getColumnIndex(key); return index < 0 || c.isNull(index) ? "" : c.getString(index);
     }
     private static Bundle snapshot(ContentProvider p) throws Exception {
         JSONArray list = new JSONArray();
-        try (Cursor c = query(p, Uri.parse(Protocol.URI + "/export"))) {
-            if (c == null) return fail("系统设备列表暂不可用");
-            while (c.moveToNext() && list.length() < 128) {
-                JSONObject item = new JSONObject();
-                for (String key : new String[]{"id", "category", "deviceType", "title", "subtitle", "state", "battery", "icon", "updateTime"})
-                    item.put(key, str(c, key));
-                list.put(item);
+        Set<String> seen = new HashSet<>();
+        boolean available = false;
+        for (int source = 0; source < 2 && list.length() < MAX_DEVICES; source++) {
+            try (Cursor c = queryDevices(p, source)) {
+                if (c == null) continue;
+                available = true;
+                while (list.length() < MAX_DEVICES && c.moveToNext()) {
+                    String id = str(c, "id");
+                    if (!eligible(c, source) || id.isEmpty() || !seen.add(id)) continue;
+                    JSONObject item = new JSONObject();
+                    for (String key : new String[]{"id", "category", "deviceType", "title", "subtitle", "state", "battery", "icon", "updateTime"})
+                        item.put(key, str(c, key));
+                    list.put(item);
+                }
             }
         }
+        if (!available) return fail("系统设备列表暂不可用");
         Bundle b = ok(); b.putString("devices", list.toString()); return b;
     }
     private static Bundle refresh(ContentProvider p) {

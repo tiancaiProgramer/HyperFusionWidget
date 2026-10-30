@@ -1,4 +1,4 @@
-HyperFusionWidget 0.0.3 — 实现结构
+HyperFusionWidget 0.0.4 — 实现结构
 MiLinkHook：现代 libxposed API 102。只在 com.milink.service:ui 与智能助理主进程加载对应适配。
 MiLinkBridge：精确校验调用者和 MiLink 版本；清除 Binder 身份后在 MiLink 内查询原 Provider，返回筛选 JSON。原有 Provider 方法继续原路径。
 NativePanel：MiLink 主线程绑定 MLCardViewHostService，传入其自身解析的 Parcelable，追踪显示、关闭与超时并解除绑定。
@@ -29,9 +29,9 @@ Message what=1；keyCardFrameVersion=20250417L，deviceInfo，keyDeviceToSpecify
 强制停止智能助理后，需先进入桌面加载负一屏宿主；否则原生 messenger queue 尚未建立。
 
 验证边界
-构建、11项身份/状态与17项展示行为 JVM 检查通过；安装、两个作用域加载、真实设备读取、原生负一屏绑定和实际显示在前版已验证。0.0.3 当前实机情况另见验证记录。
+构建、11项身份/状态与17项展示行为 JVM 检查通过；0.0.3 界面追加验证和 0.0.4 设备漏项修复的实机结果见验证记录。
 验证范围记录在 docs/VALIDATION.md 中。
 未实现面板 Surface 内嵌，未保证全部设备状态持续实时，未完成长期后台和折叠屏布局测试。
 
 “更多”入口：App 内切换至完整设备列表；FusionWidget.activity(more) 用 expand Intent 打开相同列表，hidden Intent 同时展开隐藏栏目。系统设备中心仅由明确的辅助入口打开。
-本轮保持 MiLink 查询不变；已知 /export 的 max_count 默认7台，列表漏项尚未修复。
+设备读取：/export?max_count=128 保留系统导出顺序，/category/mijia?limit=128 补充 category=mijia 且 deviceType=mijia_iot 的普通设备；按 ID 去重，合并上限128台。快照与打开面板使用相同查询源和类型条件；原始 Parcelable 仍由 MiLink 自身的 Cursor 解析器生成。既不写入系统 export 表，也不补充直接执行场景；向 App 返回的字段白名单保持不变。

@@ -2,13 +2,13 @@
 
 把 HyperOS「融合设备中心」中的设备放到负一屏卡片和桌面小组件，点击设备打开系统原生面板。
 
-当前版本：**0.0.3**，修正首页展示与排序逻辑的公开预览版。应用名称为「融合设备卡片」，包名为 `dev.fusion.widget`。此版已通过构建和逻辑检查，尚未进行实机安装验证。
+当前版本：**0.0.4**，已完成本机验证的公开预览版。应用名称为「融合设备卡片」，包名为 `dev.fusion.widget`。此版修复设备列表漏项与奇数网格布局，实机结果见[验证范围](docs/VALIDATION.md)。
 
 [下载 APK](https://github.com/tiancaiProgramer/HyperFusionWidget/releases/latest) · [验证范围](docs/VALIDATION.md) · [实现结构](ARCHITECTURE.txt) · [更新记录](CHANGELOG.md)
 
 ## 功能
 
-- 显示系统融合设备中心提供的真实设备、状态和可用电量。
+- 显示 MiLink 导出列表与同源米家目录中的真实设备、状态和可用电量，按设备 ID 去重。
 - App 使用两列设备卡片，提供一个刷新入口；“更多操作”和启用说明默认折叠。
 - 展示设置勾选哪些模块，App 首页就直接常驻哪些模块，没有固定数量档位；首页模块支持长按拖动柄或上下箭头排序。
 - “更多设备”打开 App 内的完整列表，包含已经常驻的设备；新设备自动追加至完整列表，是否常驻由用户选择。
@@ -39,7 +39,7 @@
 
 ## 安装
 
-1. 在 Releases 下载并安装 `HyperFusionWidget-0.0.3.apk`。
+1. 在 Releases 下载并安装 `HyperFusionWidget-0.0.4.apk`。
 2. 在 LSPosed 启用「融合设备卡片」，勾选两个作用域：
    - 设备互联：`com.milink.service`
    - 智能助理：`com.miui.personalassistant`
@@ -54,7 +54,7 @@
 
 设备状态来自系统缓存，底部显示读取时间；“刷新”会发起有时限的设备发现。App 在前台时每 15 秒读取系统列表，新设备须先由系统发现。后台任务可能受系统调度限制，不能保证设备状态持续实时。
 
-已知列表漏项问题：目前 MiLink `/export` 查询未指定 `max_count`，系统默认最多返回 7 台，可能遗漏门锁等排在后面的设备。0.0.3 按本轮范围先修正界面逻辑，尚未处理此读取限制；界面中的完整列表指当前已读取的全部设备。
+0.0.4 显式读取 `/export?max_count=128`，并补充 `/category/mijia?limit=128` 中的普通米家设备，解决默认 7 台截断和部分门锁、空调不在导出列表中的漏项。合并列表最多 128 台，按 ID 去重；补充目录不加入会直接执行的场景。新增读出的设备进入完整列表，首页常驻仍由用户选择。本机已验证从 7 台恢复为 14 台；其他机型与超出此上限的设备数量尚未验证。
 
 锁屏时不发起设备面板请求。设备必须仍在当前系统列表中；原生面板继续负责认证和实际控制。会直接执行的米家场景不在本版本调用范围内。其他设备类型、后台长期恢复和内外屏切换尚未逐项验证。
 
@@ -82,6 +82,8 @@ python3 build.py
 ```
 
 也可使用 `JAVA_HOME` 和 `ANDROID_HOME`。构建输出位于 `dist/`，包含 APK 与 SHA-256 文件；构建过程运行 11 项调用身份和状态解析检查、17 项展示行为检查，并验证 APK 签名。
+
+Windows PowerShell 中使用 `$env:FUSION_JAVA_HOME="C:\path\to\jdk17"` 和 `$env:FUSION_ANDROID_SDK="C:\path\to\android-sdk"` 设置路径，再运行 `python tools/fetch_xposed_api.py` 与 `python build.py`。构建脚本会选择 SDK 的 `.exe` / `.bat` 工具，并使用标准 ZIP 路径保存模块入口。
 
 libxposed 仅作为编译依赖，不打入 APK，也不纳入仓库。可用 `FUSION_XPOSED_JAR` 指定已经准备好的 API 102 JAR。
 

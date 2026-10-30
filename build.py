@@ -24,7 +24,14 @@ if not VERSION or not re.fullmatch(r'\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?', VERSION
 if not API.is_file(): raise SystemExit('Missing libxposed API 102 JAR. Run python3 tools/fetch_xposed_api.py or set FUSION_XPOSED_JAR.')
 env = os.environ.copy(); env['JAVA_HOME'] = str(JDK); env['PATH'] = str(JDK/'bin') + os.pathsep + env.get('PATH','')
 env['FUSION_SIGN_PASS'] = PASSWORD
-def run(*args): subprocess.run([str(a) for a in args], cwd=P, env=env, check=True)
+def run(*args):
+    command = [str(a) for a in args]
+    if sys.platform == 'win32' and not pathlib.Path(command[0]).is_file():
+        for suffix in ('.exe', '.bat'):
+            if pathlib.Path(command[0] + suffix).is_file():
+                command[0] += suffix
+                break
+    subprocess.run(command, cwd=P, env=env, check=True)
 if BUILD.exists(): shutil.rmtree(BUILD)
 for d in [BUILD/'generated/dev/fusion/widget', BUILD/'classes', BUILD/'test-classes', BUILD/'dex', OUT, KEY.parent]: d.mkdir(parents=True, exist_ok=True)
 if not KEY.exists():
@@ -46,7 +53,7 @@ run(TOOLS/'d8', '--min-api', '31', '--lib', ANDROID, '--classpath', API, '--outp
 with zipfile.ZipFile(BUILD/'unsigned.apk', 'a', compression=zipfile.ZIP_DEFLATED) as apk:
     for dex in (BUILD/'dex').glob('*.dex'): apk.write(dex, dex.name)
     for resource in (P/'resources').rglob('*'):
-        if resource.is_file(): apk.write(resource, str(resource.relative_to(P/'resources')))
+        if resource.is_file(): apk.write(resource, resource.relative_to(P/'resources').as_posix())
 run(TOOLS/'zipalign', '-f', '4', BUILD/'unsigned.apk', BUILD/'aligned.apk')
 result = OUT/f'HyperFusionWidget-{VERSION}.apk'
 # Keep the generated development password out of command arguments.
