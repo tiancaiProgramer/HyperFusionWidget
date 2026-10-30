@@ -1,4 +1,4 @@
-HyperFusionWidget 0.0.5 — 实现结构
+HyperFusionWidget 0.0.6 — 实现结构
 MiLinkHook：现代 libxposed API 102。只在 com.milink.service:ui 与智能助理主进程加载对应适配。
 MiLinkBridge：先精确校验调用者，再按 MiLinkVersionPolicy 检查版本；标准模式仅接受基线，兼容模式允许其他非空版本尝试接口。清除 Binder 身份后在 MiLink 内查询原 Provider，返回筛选 JSON。目录缺少必要字段时拒绝该次读取，原有 Provider 方法继续原路径。
 NativePanel：MiLink 主线程绑定 MLCardViewHostService，传入其自身解析的 Parcelable，追踪显示、关闭与超时并解除绑定。
@@ -13,6 +13,9 @@ DisplayPreferences / DevicePresentation：layout_v3 单条 JSON 保存首页有�
 RefreshJob：内容变化任务和周期回退，无常驻前台服务或持续扫描。
 CallerPolicy + PolicyTest：精确 UID、唯一包与构建签名匹配；拒绝系统 UID、Root UID、其他用户和重新签名的 APK。
 MiLinkVersionPolicy + CompatibilityTest：11 项基线、旧版本、新版本及缺失版本的版本与开关策略检查；兼容模式不参与调用者认证。
+NativeTelevisions：在 MiLink :ui 内读取 CirculateDeviceManager 的实时电视，使用原生 DeviceInfo.Builder 为面板构造 Parcelable；原始标识不返回 App，App ID 使用 native_tv: + SHA-256。最多保留128条、10分钟的近期电视元数据；失去实时来源时使用专用状态位，DeviceText 显示「待刷新」。
+电视发现：通过原生服务框架注册独立 FusionWidgetTV 连接，包含电视所需协议；遵守系统互联隐私同意状态，12秒后解除自身连接，既不全局停止发现，也不修改系统缓存。点击近期电视时重新发起有时限发现，最终由原生面板验证设备可用性。
+TelevisionPolicy + TelevisionTest：15 项类型筛选、摘要标识稳定性/区分、近期记录到期与待刷新状态隔离检查。
 
 原生协议基线
 MiLink 17.2.0.1.2601081906；智能助理 25.31.06-07091932。
@@ -31,9 +34,10 @@ Message what=1；keyCardFrameVersion=20250417L，deviceInfo，keyDeviceToSpecify
 强制停止智能助理后，需先进入桌面加载负一屏宿主；否则原生 messenger queue 尚未建立。
 
 验证边界
-构建、11项身份/状态与17项展示行为 JVM 检查通过；0.0.3 界面追加验证和 0.0.4 设备漏项修复的实机结果见验证记录。
+构建和54项 JVM 检查通过；各版界面、兼容模式和设备漏项修复的实机结果见验证记录。
 验证范围记录在 docs/VALIDATION.md 中。
 未实现面板 Surface 内嵌，未保证全部设备状态持续实时，未完成长期后台和折叠屏布局测试。
 
 “更多”入口：App 内切换至完整设备列表；FusionWidget.activity(more) 用 expand Intent 打开相同列表，hidden Intent 同时展开隐藏栏目。系统设备中心仅由明确的辅助入口打开。
 设备读取：/export?max_count=128 保留系统导出顺序，/category/mijia?limit=128 补充 category=mijia 且 deviceType=mijia_iot 的普通设备；按 ID 去重，合并上限128台。快照与打开面板使用相同查询源和类型条件；原始 Parcelable 仍由 MiLink 自身的 Cursor 解析器生成。既不写入系统 export 表，也不补充直接执行场景；向 App 返回的字段白名单保持不变。
+0.0.6 在上述目录后追加原生/近期电视；普通目录标识仍保持原值，电视补充项以摘要标识查询回 MiLink 内的原始记录，再构建原生面板数据。电视接口暂不可用时不阻断普通目录读取；其他 MiLink 版本尚需验证此来源。

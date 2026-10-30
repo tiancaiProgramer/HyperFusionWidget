@@ -35,13 +35,17 @@ public final class MiLinkBridge {
         final int caller = Binder.getCallingUid();
         long identity = Binder.clearCallingIdentity();
         try {
-            if (Protocol.SNAPSHOT.equals(method)) return snapshot(provider);
-            if (Protocol.REFRESH.equals(method)) return refresh(provider);
+            if (Protocol.SNAPSHOT.equals(method)) return snapshot(provider, loader);
+            if (Protocol.REFRESH.equals(method)) return refresh(provider, loader);
             if (Protocol.OPEN.equals(method)) {
                 if (locked(ctx)) return fail("请解锁手机后打开设备面板");
                 if (arg == null || arg.isEmpty() || arg.length() > 256) return fail("设备标识无效");
                 Parcelable device = null;
-                for (int source = 0; source < 2 && device == null; source++) {
+                if (TelevisionPolicy.isPublicId(arg)) {
+                    MAIN.post(() -> NativeTelevisions.startDiscovery(ctx, loader));
+                    device = NativeTelevisions.findPanel(loader, arg);
+                }
+                for (int source = 0; source < 2 && device == null && !TelevisionPolicy.isPublicId(arg); source++) {
                     try (Cursor c = queryDevices(provider, source)) {
                         while (c != null && c.moveToNext()) {
                             if (!eligible(c, source) || !arg.equals(str(c, "id"))) continue;
@@ -104,7 +108,7 @@ public final class MiLinkBridge {
     private static String str(Cursor c, String key) {
         int index = c.getColumnIndex(key); return index < 0 || c.isNull(index) ? "" : c.getString(index);
     }
-    private static Bundle snapshot(ContentProvider p) throws Exception {
+    private static Bundle snapshot(ContentProvider p, ClassLoader loader) throws Exception {
         JSONArray list = new JSONArray();
         Set<String> seen = new HashSet<>();
         boolean available = false;
@@ -122,16 +126,21 @@ public final class MiLinkBridge {
                 }
             }
         }
+        for (NativeTelevisions.Television tv : NativeTelevisions.read(loader)) {
+            if (list.length() >= MAX_DEVICES) break;
+            if (!seen.contains(tv.nativeId) && seen.add(tv.id)) list.put(tv.json());
+        }
         if (!available) return fail("系统设备列表暂不可用");
         Bundle b = ok(); b.putString("devices", list.toString()); return b;
     }
-    private static Bundle refresh(ContentProvider p) {
+    private static Bundle refresh(ContentProvider p, ClassLoader loader) {
         synchronized (MiLinkBridge.class) {
             if (SystemClock.elapsedRealtime() - lastRefresh < 12000) return ok();
             lastRefresh = SystemClock.elapsedRealtime();
             Bundle args = searchArgs();
             Bundle response = p.call("start_search", null, args);
             if (response == null || response.getInt("result", -1) != 1) return fail("系统未接受设备发现请求");
+            MAIN.post(() -> NativeTelevisions.startDiscovery(p.getContext(), loader));
             searching = true;
             if (stopSearch != null) MAIN.removeCallbacks(stopSearch);
             stopSearch = () -> {
