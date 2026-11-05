@@ -15,6 +15,7 @@ public final class BridgeClient {
         if (b == null || !b.containsKey("ok")) throw new Exception("模块未加载：请启用 LSPosed 模块并重启手机");
         if (!b.getBoolean("ok")) throw new Exception(b.getString("error", "系统接口暂不可用"));
         if (Protocol.STATUS.equals(method)) {
+            if(b.getInt("bridge",0)<Protocol.BRIDGE_VERSION)throw new Exception("MiLink Hook 尚未更新，请重新加载互联互通进程或重启手机");
             if (compatibility && !b.containsKey("compatibility_mode"))
                 throw new Exception("兼容模式尚未生效，请重新加载设备互联进程或重启手机");
             if (!b.getBoolean("compatible"))

@@ -30,6 +30,9 @@ final class NegativeOneHook {
                 PendingIntent proof = intent.getParcelableExtra("fusionWidgetCaller");
                 intent.removeExtra("fusionWidgetAdd"); intent.removeExtra("fusionWidgetCaller");
                 if (!trusted(activity, proof)) return;
+                boolean bound=intent.getBooleanExtra("fusionWidgetBound",false);intent.removeExtra("fusionWidgetBound");
+                android.os.ResultReceiver reply=intent.getParcelableExtra("fusionWidgetResult");intent.removeExtra("fusionWidgetResult");
+                activity.getIntent().putExtra("fusionWidgetResult",reply);
                 try {
                     if (!BASELINE.equals(activity.getPackageManager().getPackageInfo("com.miui.personalassistant", 0).versionName)) {
                         finish(activity, "当前智能助理版本尚未适配"); return;
@@ -42,6 +45,7 @@ final class NegativeOneHook {
                     View root = window.getDecorView(); root.setAlpha(0f);
                     root.post(() -> {
                         try {
+                            if(bound){module.log(android.util.Log.INFO,"FusionWidget","MiLink-only add request: existing widget binding");finish(activity,"负一屏已添加融合设备卡片");return;}
                             Class<?> overlay = loader.loadClass("com.miui.personalassistant.core.overlay.AssistantOverlayWindow");
                             Object nativeWindow = overlay.getMethod("R").invoke(null);
                             if (nativeWindow == null) { finish(activity, "请先在桌面打开一次负一屏，再回来添加"); return; }
@@ -77,7 +81,7 @@ final class NegativeOneHook {
                             add.invoke(activity, root, 1, info, 286261248, false);
                             module.log(android.util.Log.INFO, "FusionWidget", "App add request: native pipeline invoked");
                             // Native rejection (e.g. count limit) need not leave an invisible picker open.
-                            root.postDelayed(() -> { if (!activity.isFinishing()) { activity.finish(); activity.overridePendingTransition(0, 0); } }, 2000);
+                            root.postDelayed(() -> { finish(activity, "已提交负一屏添加，请返回负一屏查看卡片。"); }, 2000);
                         } catch (Throwable e) { failed(activity, e); }
                     });
                 } catch (Throwable e) { failed(activity, e); }
@@ -97,7 +101,7 @@ final class NegativeOneHook {
             Object result = chain.proceed();
             flow.request((Activity)chain.getThisObject(), (Intent)chain.getArg(0)); return result;
         });
-        module.log(android.util.Log.INFO, "FusionWidget", "App-only negative-one add bridge registered; picker UI unchanged");
+        module.log(android.util.Log.INFO, "FusionWidget", "MiLink-only negative-one bridge v"+Protocol.BRIDGE_VERSION+" registered; picker UI unchanged");
     }
     private static boolean trusted(Context context, PendingIntent proof) {
         if (proof == null || !proof.isImmutable() || !Protocol.APP.equals(proof.getCreatorPackage())) return false;
@@ -111,6 +115,8 @@ final class NegativeOneHook {
         } catch (Exception e) { return false; }
     }
     private static void finish(Activity activity, String message) {
+        android.os.ResultReceiver reply=activity.getIntent().getParcelableExtra("fusionWidgetResult");
+        if(reply!=null){android.os.Bundle data=new android.os.Bundle();data.putString("message",message);reply.send(0,data);activity.getIntent().removeExtra("fusionWidgetResult");}
         Toast.makeText(activity, message, Toast.LENGTH_LONG).show(); activity.finish(); activity.overridePendingTransition(0, 0);
     }
 }

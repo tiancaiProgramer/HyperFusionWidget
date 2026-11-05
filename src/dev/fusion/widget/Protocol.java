@@ -7,6 +7,7 @@ public final class Protocol {
     public static final String COMPATIBILITY_MODE = "milink_compatibility";
     public static final String URI = "content://com.milink.service.device";
     public static final String PREFIX = "fusion_widget_v1_";
+    public static final int BRIDGE_VERSION = 2;
     public static final String STATUS = PREFIX + "status";
     public static final String SNAPSHOT = PREFIX + "snapshot";
     public static final String REFRESH = PREFIX + "refresh";

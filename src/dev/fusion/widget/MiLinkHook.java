@@ -40,7 +40,7 @@ public final class MiLinkHook extends XposedModule {
                 }
             });
             registered = true;
-            log(Log.INFO, "FusionWidget", "MiLink UI bridge registered (API 102, scoped calls only)");
+            log(Log.INFO, "FusionWidget", "MiLink-only bridge v"+Protocol.BRIDGE_VERSION+" registered (API 102, scoped calls only)");
         } catch (Throwable e) {
             log(Log.ERROR, "FusionWidget", "Unsupported provider: " + e.getClass().getSimpleName());
         }

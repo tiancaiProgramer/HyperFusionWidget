@@ -28,9 +28,8 @@ public final class DevicePresentation {
         return changed;
     }
     public List<String> home(List<String> discovered) {
-        Set<String> available = new HashSet<>(clean(discovered)); available.add(HIDDEN);
         List<String> result = new ArrayList<>();
-        for (String id : clean(pinned)) if (available.contains(id) && !hidden.contains(id)) result.add(id);
+        for (String id : clean(pinned)) if (!hidden.contains(id)) result.add(id);
         return result;
     }
     public List<String> all(List<String> discovered) {

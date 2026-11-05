@@ -24,7 +24,7 @@ public final class MiLinkBridge {
         String installed = ctx.getPackageManager().getPackageInfo(Protocol.TARGET, 0).versionName;
         boolean compatibility = extras != null && extras.getBoolean(Protocol.COMPATIBILITY_MODE, false);
         boolean allowed = MiLinkVersionPolicy.allows(installed, compatibility);
-        Bundle result = ok(); result.putString("milink", installed); result.putInt("bridge", 1);
+        Bundle result = ok(); result.putString("milink", installed); result.putInt("bridge", Protocol.BRIDGE_VERSION);
         if (Protocol.STATUS.equals(method)) {
             result.putBoolean("compatible", allowed);
             result.putBoolean("baseline", MiLinkVersionPolicy.isBaseline(installed));

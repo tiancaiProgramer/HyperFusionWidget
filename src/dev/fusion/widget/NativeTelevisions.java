@@ -85,7 +85,7 @@ final class NativeTelevisions {
     }
 
     static Parcelable findPanel(ClassLoader loader, String id) throws Exception {
-        for (Television tv : read(loader)) if (tv.id.equals(id)) return tv.panel(loader);
+        for (Television tv : read(loader)) if (tv.live && tv.id.equals(id)) return tv.panel(loader);
         return null;
     }
 

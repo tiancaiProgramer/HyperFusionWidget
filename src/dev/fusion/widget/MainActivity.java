@@ -27,6 +27,7 @@ public final class MainActivity extends Activity {
     private String settingsTab=DevicePresentation.HOME;
     private DevicePresentation model;
     private PendingIntent addProof;
+    private boolean addAcknowledged;
     private final Set<String> knownIds=new HashSet<>(),newIds=new HashSet<>();
     private String newNotice="",feedback="";
     private LinkedHashMap<String,JSONObject> devices=new LinkedHashMap<>();
@@ -120,9 +121,10 @@ public final class MainActivity extends Activity {
         content.addView(ui.text("把常用设备放到负一屏和桌面",13,ui.muted,false));ui.space(content,14);
         String error=DeviceStore.error(this);long time=DeviceStore.time(this);
         LinearLayout status=ui.row();status.addView(dot(error.isEmpty()?ui.accent:ui.muted,6));
-        String statusText=error.isEmpty()?(time==0?"等待模块连接":"模块已连接 · 已读取 "+devices.size()+" 台设备"):(devices.isEmpty()?error:"暂时无法同步 · 显示上次设备");
+        String statusText=error.isEmpty()?(time==0?"等待模块连接":"模块已连接 · 已保存 "+devices.size()+" 台设备"):(devices.isEmpty()?error:"暂时无法同步 · 显示上次设备");
         TextView state=ui.text(statusText,12,ui.muted,false);LinearLayout.LayoutParams sp=new LinearLayout.LayoutParams(0,-2,1);sp.leftMargin=ui.dp(6);status.addView(state,sp);content.addView(status);ui.space(content,25);
         LinearLayout section=ui.row();section.addView(ui.text("融合设备中心",17,ui.text,true),new LinearLayout.LayoutParams(0,-2,1));
+        View refreshIcon=sortButton(refreshing?"正在刷新":"刷新设备",AppUi.REFRESH,this::refreshDevices);refreshIcon.setEnabled(!refreshing);section.addView(refreshIcon);
         section.addView(smallAction("展示设置",AppUi.SETTINGS,()->openSettings(DevicePresentation.HOME)));content.addView(section);ui.space(content,10);
         if(!newNotice.isEmpty()) {
             LinearLayout notice=ui.row();notice.setPadding(ui.dp(13),ui.dp(5),ui.dp(7),ui.dp(5));notice.setBackground(ui.shape(ui.pale,16));
@@ -138,8 +140,7 @@ public final class MainActivity extends Activity {
         String stamp=time==0?"尚未读取设备":(System.currentTimeMillis()-time>300000?"缓存 ":"读取于 ")+new SimpleDateFormat(DateUtils.isToday(time)?"HH:mm":"MM-dd HH:mm",Locale.getDefault()).format(new Date(time));
         meta.addView(ui.text(stamp,11,ui.muted,false),new LinearLayout.LayoutParams(0,-2,1));
         meta.addView(ui.text("首页常驻 "+shown.size()+" 个模块",11,ui.muted,false));content.addView(meta);ui.space(content,18);
-        LinearLayout refresh=actionRow(refreshing?"正在刷新…":"刷新设备",AppUi.REFRESH,-1,this::refreshDevices);refresh.setTag("refresh");refresh.setEnabled(!refreshing);content.addView(refresh);
-        ui.space(content,10);boolean more=preferences.moreOpen();
+        boolean more=preferences.moreOpen();
         LinearLayout moreRow=actionRow("更多操作",AppUi.MORE,more?AppUi.UP:AppUi.DOWN,()->{preferences.moreOpen(!preferences.moreOpen());render();});moreRow.setTag("more-operations");content.addView(moreRow);
         if(more) {
             LinearLayout group=ui.column();group.setPadding(ui.dp(14),ui.dp(3),ui.dp(14),ui.dp(3));group.setBackground(ui.shape(ui.surface,22));
@@ -176,7 +177,7 @@ public final class MainActivity extends Activity {
         try { installed=getPackageManager().getPackageInfo(Protocol.TARGET,0).versionName; } catch(Exception e) { installed="未检测到"; }
         TextView version=ui.text("当前 MiLink："+installed,12,ui.muted,false);card.addView(version);ui.space(card,10);
         TextView hint=ui.text("默认开启。允许其他 MiLink 版本尝试连接；系统接口不同仍可能无法使用。关闭后恢复标准版本检查。",12,ui.muted,false);hint.setLineSpacing(ui.dp(4),1);card.addView(hint);ui.space(card,10);
-        String error=DeviceStore.error(this);String state=compatibilityChecking?"正在检查 MiLink 连接…":error.isEmpty()?(DeviceStore.time(this)==0?"等待连接":"模块已连接 · 已读取 "+devices.size()+" 台设备"):error;
+        String error=DeviceStore.error(this);String state=compatibilityChecking?"正在检查 MiLink 连接…":error.isEmpty()?(DeviceStore.time(this)==0?"等待连接":"模块已连接 · 已保存 "+devices.size()+" 台设备"):error;
         TextView status=ui.text(state,12,error.isEmpty()?ui.accent:ui.muted,false);status.setLineSpacing(ui.dp(4),1);card.addView(status);
         toggle.setOnCheckedChangeListener((button,enabled)->{
             DeviceStore.compatibilityMode(this,enabled);compatibilityChecking=true;render();
@@ -191,7 +192,7 @@ public final class MainActivity extends Activity {
         if(fresh) {TextView flag=ui.text("新设备",11,ui.accent,false);flag.setGravity(Gravity.END);top.addView(flag,new LinearLayout.LayoutParams(0,-2,1));}
         card.addView(top);ui.space(card,12);
         TextView name=ui.text(device.optString("title","设备"),15,ui.text,true);name.setMaxLines(2);name.setEllipsize(TextUtils.TruncateAt.END);card.addView(name);
-        ui.space(card,4);String state=DeviceText.state(device.optString("deviceType"),device.optInt("state"));String battery=FusionWidget.battery(device.optString("battery"));
+        ui.space(card,4);String state=device.optBoolean("stale")?"待刷新":DeviceText.state(device.optString("deviceType"),device.optInt("state"));String operation=DeviceStore.operation(this,device.optString("id"));if(!operation.isEmpty())state=operation;String battery=FusionWidget.battery(device.optString("battery"));
         LinearLayout stateRow=ui.row();stateRow.addView(dot((device.optInt("state")&1)!=0?ui.accent:ui.muted,4));
         TextView stateText=ui.text(state+(battery.isEmpty()?"":" · "+battery),12,ui.muted,false);stateText.setMaxLines(1);stateText.setEllipsize(TextUtils.TruncateAt.END);
         LinearLayout.LayoutParams st=new LinearLayout.LayoutParams(0,-2,1);st.leftMargin=ui.dp(5);stateRow.addView(stateText,st);card.addView(stateRow);
@@ -199,7 +200,7 @@ public final class MainActivity extends Activity {
         card.setOnLongClickListener(v->{manage(device.optString("id"));return true;});
         card.setOnClickListener(v->{
             if(DeviceText.isScene(device.optString("deviceType"))) {try{openCenter();}catch(Exception e){toast("请在系统设备中心操作此场景");}}
-            else startActivity(new Intent(this,DeviceActivity.class).putExtra("id",device.optString("id")));
+            else {DeviceStore.operation(this,device.optString("id"),"正在刷新…");startActivity(new Intent(this,DeviceActivity.class).putExtra("id",device.optString("id")));}
         });return card;
     }
     private void renderAll() {
@@ -349,14 +350,48 @@ public final class MainActivity extends Activity {
     }
     private void addNegative() {
         try {
+            feedback="正在请求添加到负一屏…";addAcknowledged=false;render();
+            android.os.ResultReceiver result=new android.os.ResultReceiver(main) {
+                @Override protected void onReceiveResult(int code,Bundle data) {addAcknowledged=true;feedback=data==null?"负一屏未返回添加结果":data.getString("message","请检查负一屏卡片");if(!isDestroyed())render();}
+            };
+            android.os.Parcel parcel=android.os.Parcel.obtain();
+            android.os.ResultReceiver remote;
+            try {result.writeToParcel(parcel,0);parcel.setDataPosition(0);remote=android.os.ResultReceiver.CREATOR.createFromParcel(parcel);}finally{parcel.recycle();}
             addProof=PendingIntent.getActivity(this,3,new Intent(this,MainActivity.class).setAction(Protocol.APP+".ADD_REQUEST"),PendingIntent.FLAG_CANCEL_CURRENT|PendingIntent.FLAG_ONE_SHOT|PendingIntent.FLAG_IMMUTABLE);
-            startActivity(new Intent().setComponent(new ComponentName("com.miui.personalassistant","com.miui.personalassistant.picker.business.home.pages.PickerHomeActivity")).putExtra("openSource",1).putExtra("fusionWidgetAdd",true).putExtra("fusionWidgetCaller",addProof));overridePendingTransition(0,0);
+            boolean bound=AppWidgetManager.getInstance(this).getAppWidgetIds(new ComponentName(this,FusionWidget.class)).length>0;
+            startActivity(new Intent().setComponent(new ComponentName("com.miui.personalassistant","com.miui.personalassistant.picker.business.home.pages.PickerHomeActivity")).putExtra("openSource",1).putExtra("fusionWidgetAdd",true).putExtra("fusionWidgetBound",bound).putExtra("fusionWidgetCaller",addProof).putExtra("fusionWidgetResult",remote));overridePendingTransition(0,0);
+            main.postDelayed(()->{if(!addAcknowledged&&!isDestroyed()){feedback="负一屏未确认添加。请先打开一次负一屏，并在更新模块后重新加载智能助理进程。";render();}},10000);
         } catch(Exception e) {android.util.Log.e("FusionWidget","Picker launch failed",e);toast("请检查智能助理作用域和版本是否适配");}
     }
     private void addDesktop() {
         AppWidgetManager manager=AppWidgetManager.getInstance(this);
-        if(manager.isRequestPinAppWidgetSupported()) {if(!manager.requestPinAppWidget(new ComponentName(this,FusionWidget.class),null,null))toast("请在桌面编辑模式中添加小组件");}
-        else toast("请长按桌面 → 添加小组件 → 安卓小组件 → 融合设备卡片");
+        try {
+            if(shortcutPermissionBlocked()) {desktopPermission();return;}
+            int previous=manager.getAppWidgetIds(new ComponentName(this,DesktopWidget.class)).length;
+            if(manager.isRequestPinAppWidgetSupported()&&manager.requestPinAppWidget(new ComponentName(this,DesktopWidget.class),null,null)) {
+                feedback="已请求桌面添加。";render();
+                main.postDelayed(()->{
+                    if(isDestroyed())return;
+                    if(manager.getAppWidgetIds(new ComponentName(this,DesktopWidget.class)).length>previous)feedback="桌面小组件已添加。";
+                    else {feedback="桌面尚未确认添加，请检查创建桌面快捷方式权限。";if(foreground)desktopPermission();}
+                    render();
+                },5000);return;
+            }
+            new AlertDialog.Builder(this).setTitle("添加桌面小组件").setMessage("当前桌面未接受自动添加。请返回桌面，长按空白处 → 添加小组件 → 安卓小组件 → 融合设备中心（桌面）。").setPositiveButton("返回桌面",(d,w)->startActivity(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME))).setNegativeButton("取消",null).show();
+        }catch(RuntimeException e){toast("桌面添加失败，请通过桌面编辑模式添加「融合设备中心（桌面）」");}
+    }
+    private boolean shortcutPermissionBlocked() {
+        try {
+            android.app.AppOpsManager ops=getSystemService(android.app.AppOpsManager.class);
+            int mode=(Integer)ops.getClass().getMethod("checkOpNoThrow",int.class,int.class,String.class).invoke(ops,10017,android.os.Process.myUid(),getPackageName());
+            return mode==android.app.AppOpsManager.MODE_IGNORED||mode==android.app.AppOpsManager.MODE_ERRORED;
+        }catch(Exception e){return false;}
+    }
+    private void desktopPermission() {
+        new AlertDialog.Builder(this).setTitle("允许添加桌面小组件").setMessage("HyperOS 需要允许本应用「创建桌面快捷方式」，才能完成桌面小组件添加。请在系统权限页开启后返回重试。").setPositiveButton("前往权限设置",(d,w)->{
+            try {startActivity(new Intent("miui.intent.action.APP_PERM_EDITOR").setPackage("com.miui.securitycenter").putExtra("extra_pkgname",getPackageName()));}
+            catch(RuntimeException e){startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,android.net.Uri.parse("package:"+getPackageName())));}
+        }).setNegativeButton("取消",null).show();
     }
     private void openCenter() {startActivity(new Intent().setComponent(new ComponentName(Protocol.TARGET,"com.miui.circulate.world.CirculateWorldActivity")));}
     private void toast(String value) {Toast.makeText(this,value,Toast.LENGTH_LONG).show();}

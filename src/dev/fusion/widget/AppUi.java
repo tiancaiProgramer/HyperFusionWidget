@@ -8,6 +8,10 @@ import android.view.View;
 import android.widget.*;
 
 final class AppUi {
+    static void systemBars(android.app.Activity activity){
+        android.view.Window window=activity.getWindow();window.setDecorFitsSystemWindows(false);window.setStatusBarColor(Color.TRANSPARENT);window.setNavigationBarColor(Color.TRANSPARENT);window.getDecorView();android.view.WindowInsetsController bars=window.getInsetsController();
+        if(bars!=null){int flags=android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS|android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;boolean night=(activity.getResources().getConfiguration().uiMode&android.content.res.Configuration.UI_MODE_NIGHT_MASK)==android.content.res.Configuration.UI_MODE_NIGHT_YES;bars.setSystemBarsAppearance(night?0:flags,flags);}
+    }
     static final int REFRESH=0, SETTINGS=1, MORE=2, HELP=3, DOWN=4, UP=5, RIGHT=6, OUT=7, NEGATIVE=8, DESKTOP=9, DEVICES=10, BACK=11, HIDDEN=12, DRAG=13;
     final Context context;
     final int background, surface, text, muted, accent, pale, line;

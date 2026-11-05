@@ -39,7 +39,7 @@ final class DisplayPreferences {
         return result;
     }
     void pin(String id, boolean selected) {
-        synchronized (LOCK) { DeviceStore.transaction(context, () -> { DevicePresentation model = read(DeviceStore.devices(context)); model.pin(id, selected); save(model); return null; }); }
+        synchronized (LOCK) { DeviceStore.transaction(context, () -> { DevicePresentation model = read(DeviceStore.devices(context)); model.pin(id, selected); save(model); DeviceStore.remember(context, DeviceStore.devices(context)); return null; }); }
     }
     void hide(String id, boolean hidden) {
         synchronized (LOCK) { DeviceStore.transaction(context, () -> { DevicePresentation model = read(DeviceStore.devices(context)); model.hide(id, hidden); save(model); return null; }); }

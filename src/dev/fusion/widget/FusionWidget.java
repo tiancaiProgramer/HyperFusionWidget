@@ -12,7 +12,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public final class FusionWidget extends AppWidgetProvider {
+public class FusionWidget extends AppWidgetProvider {
     static final String REFRESH_ACTION = Protocol.APP + ".REFRESH";
     private static final ExecutorService WORK = Executors.newSingleThreadExecutor();
     private static final AtomicBoolean BUSY = new AtomicBoolean();
@@ -36,7 +36,7 @@ public final class FusionWidget extends AppWidgetProvider {
     @Override public void onAppWidgetOptionsChanged(Context context, AppWidgetManager manager, int id, Bundle options) {
         manager.updateAppWidget(id, render(context, options));
     }
-    @Override public void onDisabled(Context context) { RefreshJob.cancel(context); }
+    @Override public void onDisabled(Context context) { if(widgetIds(context).length==0)RefreshJob.cancel(context); }
 
     static synchronized boolean request(Context context, boolean discover, Runnable done) {
         Context app = context.getApplicationContext();
@@ -52,8 +52,7 @@ public final class FusionWidget extends AppWidgetProvider {
                 if (discover) {
                     BridgeClient.call(app, Protocol.REFRESH, null);
                     // A bounded refresh catches early discoveries without keeping a permanent service.
-                    Thread.sleep(1800); fetch(app); updateAll(app);
-                    Thread.sleep(2500); fetch(app);
+                    for(long delay:new long[]{1000,2000,3000,3000,3000}) {Thread.sleep(delay);fetch(app);updateAll(app);}
                 }
             } catch (Exception e) { DeviceStore.error(app, e.getMessage() == null ? "设备列表更新失败" : e.getMessage()); }
             finally { updateAll(app); BUSY.set(false); done.run(); }
@@ -69,6 +68,7 @@ public final class FusionWidget extends AppWidgetProvider {
         });
     }
     static void fetch(Context context) throws Exception {
+        DeviceStore.separateCloud(context);
         BridgeClient.call(context, Protocol.STATUS, null);
         Bundle data = BridgeClient.call(context, Protocol.SNAPSHOT, null);
         String json = data.getString("devices");
@@ -77,10 +77,15 @@ public final class FusionWidget extends AppWidgetProvider {
     }
     static void updateAll(Context c) {
         AppWidgetManager m = AppWidgetManager.getInstance(c);
-        for (int id : m.getAppWidgetIds(new ComponentName(c, FusionWidget.class))) {
+        for (int id : widgetIds(c)) {
             try { m.updateAppWidget(id, render(c, m.getAppWidgetOptions(id))); } catch (RuntimeException ignored) {}
         }
         MainActivity.notifyChanged();
+    }
+    static int[] widgetIds(Context c) {
+        AppWidgetManager m=AppWidgetManager.getInstance(c);
+        int[] a=m.getAppWidgetIds(new ComponentName(c,FusionWidget.class)),b=m.getAppWidgetIds(new ComponentName(c,DesktopWidget.class));
+        int[] result=java.util.Arrays.copyOf(a,a.length+b.length);System.arraycopy(b,0,result,a.length,b.length);return result;
     }
     static PendingIntent activity(Context c, String action, String id) {
         if ("more".equals(action)) {
@@ -122,7 +127,8 @@ public final class FusionWidget extends AppWidgetProvider {
                     RemoteViews tile = new RemoteViews(c.getPackageName(), R.layout.tile);
                     tile.setTextViewText(R.id.name, d.optString("title", "设备"));
                     boolean hiddenGroup = "fusion_hidden".equals(d.optString("deviceType"));
-                    String state = hiddenGroup ? d.optString("subtitle") : DeviceText.state(d.optString("deviceType"), d.optInt("state"));
+                    String state = hiddenGroup ? d.optString("subtitle") : d.optBoolean("stale") ? "待刷新" : DeviceText.state(d.optString("deviceType"), d.optInt("state"));
+                    String operation = DeviceStore.operation(c,d.optString("id")); if(!operation.isEmpty()) state=operation;
                     String battery = battery(d.optString("battery"));
                     tile.setTextViewText(R.id.state, state + (battery.isEmpty() ? "" : " · " + battery));
                     tile.setImageViewBitmap(R.id.icon, DeviceIcons.make(c, d));

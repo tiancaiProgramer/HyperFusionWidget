@@ -32,7 +32,7 @@ public final class PresentationTest {
         List<String> after=new ArrayList<>(ids);after.add("new-lock");List<String> homeBefore=model.home(ids);model.discover(after);
         check(model.all(after).get(model.all(after).size()-1).equals("new-lock")&&model.home(after).equals(homeBefore),"new devices append to full list without changing homepage selection");
         List<String> disconnected=list("camera","rice","tv","oven","watch","new-lock");
-        check(!model.home(disconnected).contains("phone")&&model.home(after).equals(homeBefore),"temporary disappearance does not erase saved pins or order");
+        check(model.home(disconnected).equals(homeBefore)&&model.home(after).equals(homeBefore),"missing pinned devices remain visible with their saved order");
         DevicePresentation migrated=DevicePresentation.migrate(ids,new HashSet<>(list("camera")),2);
         check(migrated.home(ids).equals(list("phone","rice"))&&migrated.hidden.isEmpty()&&migrated.all(ids).contains("camera"),"old unchecked devices migrate as unpinned, not explicitly hidden");
         DevicePresentation empty=new DevicePresentation();empty.discover(list("phone","phone","",null));empty.pin("phone",true);empty.pin("phone",true);
@@ -41,6 +41,12 @@ public final class PresentationTest {
         check(empty.home(list("phone")).isEmpty()&&empty.all(list("phone")).contains("phone"),"empty homepage is intentional and full list remains available");
         model.hide(DevicePresentation.HIDDEN,true);
         check(!model.hidden.contains(DevicePresentation.HIDDEN)&&!model.move("invalid","phone","tv"),"special module and invalid ordering requests are constrained");
+        DevicePresentation persistent=new DevicePresentation();persistent.discover(list("tv","lamp"));persistent.pin("tv",true);
+        check(persistent.home(Collections.emptyList()).equals(list("tv")),"pinned television remains a homepage module after all discovery records expire");
+        persistent.pin("tv",false);
+        check(persistent.home(Collections.emptyList()).isEmpty(),"user can deliberately remove an unavailable pinned module");
+        persistent.pin("tv",true);persistent.hide("tv",true);
+        check(persistent.home(Collections.emptyList()).isEmpty(),"hiding an unavailable module still removes it from homepage");
         System.out.println(checks+" device-presentation behavior checks passed");
     }
 }

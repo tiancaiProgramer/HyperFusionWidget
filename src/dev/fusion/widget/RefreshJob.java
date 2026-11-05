@@ -12,7 +12,7 @@ public final class RefreshJob extends JobService {
     private final ConcurrentHashMap<Integer, Task> tasks = new ConcurrentHashMap<>();
     private static final class Task { volatile boolean stopped; volatile Future<?> future; }
     static void schedule(Context c) {
-        if (AppWidgetManager.getInstance(c).getAppWidgetIds(new ComponentName(c, FusionWidget.class)).length == 0) return;
+        if (FusionWidget.widgetIds(c).length == 0) return;
         JobScheduler js = c.getSystemService(JobScheduler.class);
         if (js == null) return;
         try { if (js.getPendingJob(CHANGES) == null) scheduleChanges(c); } catch (RuntimeException ignored) {}
@@ -34,7 +34,7 @@ public final class RefreshJob extends JobService {
             if (!task.stopped) {
                 FusionWidget.updateAll(this);
                 try {
-                    if (p.getJobId() == CHANGES && AppWidgetManager.getInstance(this).getAppWidgetIds(new ComponentName(this, FusionWidget.class)).length > 0) scheduleChanges(this);
+                    if (p.getJobId() == CHANGES && FusionWidget.widgetIds(this).length > 0) scheduleChanges(this);
                 } catch (RuntimeException ignored) {}
                 jobFinished(p, false);
             }
